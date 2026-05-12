@@ -34,7 +34,7 @@
 
 ```
 pwa-rescue/
-├─ public/                          ← 部署到 GitHub Pages / Cloudflare Pages
+├─ docs/                            ← 部署到 GitHub Pages / Cloudflare Pages
 │  ├─ rescue.html                   ← 逃生页面(用户最终会看到)
 │  └─ pwa-domains.json              ← 动态备份域名清单
 ├─ integration/                     ← 集成片段(merge 到主项目)
@@ -45,26 +45,40 @@ pwa-rescue/
 
 ## 部署步骤
 
-### Step 1:把 `public/` 部署到第三方稳定域
+### Step 1:把 `docs/` 部署到第三方稳定域
 
-**推荐 GitHub Pages**(免费、几乎不会被针对性封禁):
+**方式 A:Cloudflare Pages**(推荐)
 
 ```bash
-# 1. 在 GitHub 新建一个仓库,例如 your-org/pwa-rescue
-# 2. 把 public/ 下的内容推上去
-cd /Users/xsp/Sites/pwa-rescue/public
-git init && git add . && git commit -m "init rescue page"
-git remote add origin https://github.com/YOUR-ORG/pwa-rescue.git
-git push -u origin main
-# 3. 仓库 Settings → Pages → Source 选 main 分支
-# 4. 等几分钟,访问 https://YOUR-ORG.github.io/pwa-rescue/rescue.html 验证
+# 1. push 到 GitHub
+git push
+
+# 2. CF 控制台 → Workers & Pages → Create → Pages 标签页 → Connect to Git
+#    选择本仓库,构建设置:
+#      - Framework preset: None
+#      - Build command: 留空
+#      - Build output directory: docs
+# 3. 部署完得到 https://pwa-rescue.pages.dev
+# 4. 访问 https://pwa-rescue.pages.dev/rescue.html 验证
 ```
 
-**额外保险**:同时部署到 Cloudflare Pages、Vercel,得到 3 个独立 URL。把它们都加到 SW snippet 的备份列表里(略改 snippet 即可)。
+或用 wrangler 直传:
+```bash
+npx wrangler pages deploy docs --project-name=pwa-rescue
+```
+
+⚠️ 注意:**不要选 Cloudflare Workers**(那个会生成 worker.js,是给动态逻辑用的)。本项目纯静态,必须用 Pages。
+
+**方式 B:GitHub Pages**
+
+仓库 Settings → Pages → Source 选 `main` 分支 + `/docs` 目录 → 保存。
+访问 `https://YOUR-ORG.github.io/pwa-rescue/rescue.html` 验证。
+
+**额外保险**:同时部署到 Cloudflare Pages、GitHub Pages、Vercel,得到 3 个独立 URL,都加到 `DOMAIN_SOURCES`,任一存活即可。
 
 ### Step 2:配置备份域名清单
 
-编辑 `public/pwa-domains.json`,填入真实的备份域:
+编辑 `docs/pwa-domains.json`,填入真实的备份域:
 
 ```json
 {
@@ -78,11 +92,11 @@ git push -u origin main
 }
 ```
 
-**重要**:把这个 JSON 同时上传到多个独立 CDN(S3、阿里云 OSS、R2、GitHub),然后修改 `public/rescue.html` 中的 `DOMAIN_SOURCES` 数组,列出所有 URL。任一存活即可拉到最新清单。
+**重要**:把这个 JSON 同时上传到多个独立 CDN(S3、阿里云 OSS、R2、GitHub),然后修改 `docs/rescue.html` 中的 `DOMAIN_SOURCES` 数组,列出所有 URL。任一存活即可拉到最新清单。
 
 ### Step 3:改 `rescue.html` 的配置
 
-打开 `public/rescue.html`,修改顶部配置区:
+打开 `docs/rescue.html`,修改顶部配置区:
 
 ```js
 var DOMAIN_SOURCES = [
