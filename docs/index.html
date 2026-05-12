@@ -57,16 +57,16 @@
   // 备份域名拉取源(多 CDN 兜底,任一存活即可)
   // 返回 JSON 格式:{ "domains": ["https://b1.com", "https://b2.com", ...], "ver": 1 }
   var DOMAIN_SOURCES = [
-    'pwa-domains.json',
+    'https://pwa-rescue.pages.dev/pwa-domains.json',
     // 'https://YOUR-CDN-2.example.com/pwa-domains.json',
     // 'https://raw.githubusercontent.com/YOUR-ORG/YOUR-REPO/main/pwa-domains.json'
   ];
 
   // 写死的兜底域名池(动态拉取全失败时使用)
   var FALLBACK_DOMAINS = [
-    'https://c.com',
-    'https://b.com',
-    'https://a.com'
+    'https://ca999.game',
+    'https://mx39.com',
+    'https://p933.com'
   ];
 
   // 用户最新地址查看页(Telegram 频道、Twitter 等)
@@ -176,22 +176,32 @@
 
   // 主流程
   (function main() {
+    console.log('[rescue] main() started');
     // 总超时兜底
-    var totalTimer = setTimeout(showFail, TOTAL_TIMEOUT);
+    var totalTimer = setTimeout(function() {
+      console.warn('[rescue] TOTAL_TIMEOUT exceeded');
+      showFail();
+    }, TOTAL_TIMEOUT);
 
     fetchDomainList().then(function (dynamicList) {
+      console.log('[rescue] fetchDomainList done, list=', dynamicList);
       var pool = (dynamicList && dynamicList.length) ? dynamicList : FALLBACK_DOMAINS;
+      console.log('[rescue] using pool=', pool);
 
       // 依次探活
       function tryNext(i) {
+        console.log('[rescue] tryNext(i=' + i + '), testing=' + (pool[i] || 'undefined'));
         if (i >= pool.length) {
           clearTimeout(totalTimer);
+          console.warn('[rescue] all domains failed, showing fail page');
           showFail();
           return;
         }
         ping(pool[i]).then(function (ok) {
+          console.log('[rescue] ping result for ' + pool[i] + '=' + ok);
           if (ok) {
             clearTimeout(totalTimer);
+            console.log('[rescue] jumping to', pool[i]);
             jumpTo(pool[i]);
           } else {
             tryNext(i + 1);
