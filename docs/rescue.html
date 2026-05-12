@@ -57,15 +57,16 @@
   // 备份域名拉取源(多 CDN 兜底,任一存活即可)
   // 返回 JSON 格式:{ "domains": ["https://b1.com", "https://b2.com", ...], "ver": 1 }
   var DOMAIN_SOURCES = [
-    'https://pwa-rescue.wk001.workers.dev//pwa-domains.json',
+    'pwa-domains.json',
     // 'https://YOUR-CDN-2.example.com/pwa-domains.json',
     // 'https://raw.githubusercontent.com/YOUR-ORG/YOUR-REPO/main/pwa-domains.json'
   ];
 
   // 写死的兜底域名池(动态拉取全失败时使用)
   var FALLBACK_DOMAINS = [
+    'https://c.com',
     'https://b.com',
-    'https://b2.com'
+    'https://a.com'
   ];
 
   // 用户最新地址查看页(Telegram 频道、Twitter 等)
@@ -123,30 +124,40 @@
 
   // 从多个 CDN 拉备份域名列表,谁先返回用谁
   function fetchDomainList() {
+    console.log('[rescue] fetchDomainList start, sources=', DOMAIN_SOURCES);
     var promises = DOMAIN_SOURCES.map(function (src) {
       return new Promise(function (resolve, reject) {
         var ctrl = ('AbortController' in window) ? new AbortController() : null;
         var timer = setTimeout(function () {
+          console.warn('[rescue] timeout', src);
           if (ctrl) ctrl.abort();
-          reject();
+          reject(new Error('timeout'));
         }, PING_TIMEOUT);
 
-        fetch(src + (src.indexOf('?') === -1 ? '?' : '&') + '_=' + Date.now(), {
+        var url = src + (src.indexOf('?') === -1 ? '?' : '&') + '_=' + Date.now();
+        console.log('[rescue] fetching', url);
+        fetch(url, {
           cache: 'no-store',
           signal: ctrl ? ctrl.signal : undefined
         })
-          .then(function (r) { return r.ok ? r.json() : Promise.reject(); })
+          .then(function (r) {
+            console.log('[rescue] response', src, 'ok=', r.ok, 'status=', r.status);
+            return r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status));
+          })
           .then(function (data) {
             clearTimeout(timer);
+            console.log('[rescue] parsed', src, data);
             if (data && Array.isArray(data.domains) && data.domains.length) {
               resolve(data.domains);
             } else {
-              reject();
+              console.warn('[rescue] invalid shape', src, data);
+              reject(new Error('invalid data'));
             }
           })
-          ['catch'](function () {
+          ['catch'](function (err) {
             clearTimeout(timer);
-            reject();
+            console.warn('[rescue] failed', src, err && err.message ? err.message : err);
+            reject(err);
           });
       });
     });
