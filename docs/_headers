@@ -1,0 +1,11 @@
+/*
+  Access-Control-Allow-Origin: *
+  Cache-Control: public, max-age=300
+
+/rescue.html
+  Access-Control-Allow-Origin: *
+  Cache-Control: public, max-age=300
+
+/pwa-domains.json
+  Access-Control-Allow-Origin: *
+  Cache-Control: public, max-age=60
