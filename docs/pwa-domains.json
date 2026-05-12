@@ -2,9 +2,9 @@
   "version": 1,
   "updated_at": "2026-05-12",
   "domains": [
-    "https://b.com",
-    "https://b2.com",
-    "https://b3.com"
+    "https://ca999.com",
+    "https://mx39.com",
+    "https://p933.com"
   ],
   "notice": "Update this file and push to all CDNs. Clients fetch this every PWA launch via message channel."
 }
