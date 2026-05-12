@@ -54,12 +54,14 @@
 
   // ========== 配置区:部署时按需修改 ==========
 
-  // 备份域名拉取源(多 CDN 兜底,任一存活即可)
-  // 返回 JSON 格式:{ "domains": ["https://b1.com", "https://b2.com", ...], "ver": 1 }
-  var DOMAIN_SOURCES = [
-    'https://pwa-rescue.pages.dev/pwa-domains.json',
-    // 'https://YOUR-CDN-2.example.com/pwa-domains.json',
-    // 'https://raw.githubusercontent.com/YOUR-ORG/YOUR-REPO/main/pwa-domains.json'
+  // 备份域名拉取源(多 API 端点兜底,任一存活即可)
+  // 接口规约:GET {base}?from={hostname}  返回 { "domains": ["https://b1.com", ...] }
+  // ⚠️ 这些域名必须独立于主业务域,主域死了 API 跟着死就失效了
+  // 建议:Cloudflare Worker / 独立备案的 API 域 / 不同服务商
+  var DOMAIN_API_ENDPOINTS = [
+    'https://YOUR-API-1.example.com/api/index/pwa-domains',
+    // 'https://YOUR-API-2.example.com/api/index/pwa-domains',
+    // 'https://YOUR-WORKER.workers.dev/api/index/pwa-domains',
   ];
 
   // 写死的兜底域名池(动态拉取全失败时使用)
@@ -81,7 +83,22 @@
   // ===========================================
 
   var startedAt = Date.now();
-  var tail = location.search + location.hash;
+
+  // 解析 SW 传来的上下文:from(原主域 hostname) / path(原 path+query+hash) / t
+  // 商户身份由后台根据 from 映射,前端不感知 mid
+  var ctx = (function () {
+    var p = new URLSearchParams(location.search);
+    return {
+      from: p.get('from') || '',
+      path: p.get('path') || (location.search + location.hash),
+      t:    p.get('t')    || ''
+    };
+  })();
+
+  // tail:跳到目标域时拼在域名后的部分(尽量还原用户原本要去的页面)
+  var tail = ctx.path || (location.search + location.hash);
+  // 保证 tail 开头是 / 或 ? 或 # 之一
+  if (tail && tail[0] !== '/' && tail[0] !== '?' && tail[0] !== '#') tail = '/' + tail;
 
   function $(id) { return document.getElementById(id); }
 
@@ -92,9 +109,9 @@
   }
 
   function jumpTo(base) {
-    // base 末尾去斜杠,tail 已带 ? 或 #
     base = base.replace(/\/+$/, '');
-    location.replace(base + '/' + tail);
+    var target = base + (tail.charAt(0) === '/' || tail.charAt(0) === '?' || tail.charAt(0) === '#' ? '' : '/') + tail;
+    location.replace(target);
   }
 
   // 用 fetch 探活,no-cors 下只要 TCP/TLS 通就算成功
@@ -122,41 +139,41 @@
     });
   }
 
-  // 从多个 CDN 拉备份域名列表,谁先返回用谁
+  // 从多个 API 端点拉备份域名列表,谁先返回用谁。每个端点带上 from
   function fetchDomainList() {
-    console.log('[rescue] fetchDomainList start, sources=', DOMAIN_SOURCES);
-    var promises = DOMAIN_SOURCES.map(function (src) {
+    if (!ctx.from) return Promise.resolve(null);
+
+    var promises = DOMAIN_API_ENDPOINTS.map(function (base) {
       return new Promise(function (resolve, reject) {
         var ctrl = ('AbortController' in window) ? new AbortController() : null;
         var timer = setTimeout(function () {
-          console.warn('[rescue] timeout', src);
           if (ctrl) ctrl.abort();
           reject(new Error('timeout'));
         }, PING_TIMEOUT);
 
-        var url = src + (src.indexOf('?') === -1 ? '?' : '&') + '_=' + Date.now();
-        console.log('[rescue] fetching', url);
+        var url = base
+          + (base.indexOf('?') === -1 ? '?' : '&')
+          + 'from=' + encodeURIComponent(ctx.from)
+          + '&_=' + Date.now();
+
         fetch(url, {
           cache: 'no-store',
           signal: ctrl ? ctrl.signal : undefined
         })
           .then(function (r) {
-            console.log('[rescue] response', src, 'ok=', r.ok, 'status=', r.status);
             return r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status));
           })
           .then(function (data) {
             clearTimeout(timer);
-            console.log('[rescue] parsed', src, data);
             if (data && Array.isArray(data.domains) && data.domains.length) {
               resolve(data.domains);
             } else {
-              console.warn('[rescue] invalid shape', src, data);
               reject(new Error('invalid data'));
             }
           })
           ['catch'](function (err) {
             clearTimeout(timer);
-            console.warn('[rescue] failed', src, err && err.message ? err.message : err);
+            console.warn('[rescue] api failed', base, err && err.message);
             reject(err);
           });
       });
@@ -176,32 +193,20 @@
 
   // 主流程
   (function main() {
-    console.log('[rescue] main() started');
-    // 总超时兜底
-    var totalTimer = setTimeout(function() {
-      console.warn('[rescue] TOTAL_TIMEOUT exceeded');
-      showFail();
-    }, TOTAL_TIMEOUT);
+    var totalTimer = setTimeout(showFail, TOTAL_TIMEOUT);
 
     fetchDomainList().then(function (dynamicList) {
-      console.log('[rescue] fetchDomainList done, list=', dynamicList);
       var pool = (dynamicList && dynamicList.length) ? dynamicList : FALLBACK_DOMAINS;
-      console.log('[rescue] using pool=', pool);
 
-      // 依次探活
       function tryNext(i) {
-        console.log('[rescue] tryNext(i=' + i + '), testing=' + (pool[i] || 'undefined'));
         if (i >= pool.length) {
           clearTimeout(totalTimer);
-          console.warn('[rescue] all domains failed, showing fail page');
           showFail();
           return;
         }
         ping(pool[i]).then(function (ok) {
-          console.log('[rescue] ping result for ' + pool[i] + '=' + ok);
           if (ok) {
             clearTimeout(totalTimer);
-            console.log('[rescue] jumping to', pool[i]);
             jumpTo(pool[i]);
           } else {
             tryNext(i + 1);
