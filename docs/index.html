@@ -270,40 +270,26 @@
   </main>
 </div>
 
+<script src="config.js"></script>
 <script>
 (function () {
   'use strict';
 
   // ========== 配置区 ==========
+  // 只有接口端点列表本地配置,其他所有数据(support_url / logo_url / carousel_images)
+  // 一律由接口返回。CF Pages 构建期可通过 env 覆盖 config.js,详见 docs/API.md
+  var CFG = (window.PWA_RESCUE_CONFIG || {});
 
-  var DOMAIN_API_ENDPOINTS = [
-    'https://YOUR-API-1.example.com/api/index/pwa-domains',
-    // 'https://YOUR-WORKER.workers.dev/api/index/pwa-domains',
-  ];
-
-  var FALLBACK_DOMAINS = [
-    'https://ca999.game',
-    'https://mx39.com',
-    'https://p933.com'
-  ];
-
-  // 轮播图片(164:292 竖图,部署时替换为真实素材)
-  var CAROUSEL_IMAGES = [
-    'https://picsum.photos/seed/app1/328/584',
-    'https://picsum.photos/seed/app2/328/584',
-    'https://picsum.photos/seed/app3/328/584',
-    'https://picsum.photos/seed/app4/328/584'
-  ];
+  var DOMAIN_API_ENDPOINTS = Array.isArray(CFG.domainApiEndpoints) ? CFG.domainApiEndpoints : [];
 
   var CAROUSEL_INTERVAL = 3000;
-  var DEFAULT_SUPPORT_URL = 'https://t.me/your_channel';
-  // 默认 Logo(后续接口返回 logo_url 时会覆盖)
-  var DEFAULT_LOGO_URL = 'https://s02.gamebrkci128.com/images/2026/02/12/image_1770888741_o8fv077V.png';
   var FETCH_TIMEOUT = 4000;
   var PING_TIMEOUT = 2500;
 
-  var supportUrl = DEFAULT_SUPPORT_URL;
-  var logoUrl = DEFAULT_LOGO_URL;
+  // 运行时由接口注入
+  var supportUrl = '';
+  var logoUrl = '';
+  var carouselImages = [];
 
   // ============================
 
@@ -324,10 +310,14 @@
   // ---- 轮播 ----
   function initCarousel() {
     var box = $('carousel');
+    if (!carouselImages.length) {
+      box.style.display = 'none';
+      return;
+    }
     var dotsWrap = $('dots');
     var slides = [];
 
-    CAROUSEL_IMAGES.forEach(function (src, i) {
+    carouselImages.forEach(function (src, i) {
       var d = document.createElement('div');
       d.className = 'slide';
       var img = document.createElement('img');
@@ -397,6 +387,11 @@
   }
 
   function armCTAFallback() {
+    // 所有域名都 ping 不通,且没有客服链接时退化为失败页
+    if (!supportUrl) {
+      showFail();
+      return;
+    }
     var cta = $('cta');
     cta.href = supportUrl;
     cta.setAttribute('aria-disabled', 'false');
@@ -438,10 +433,23 @@
       logo.src = logoUrl;
       logo.removeAttribute('hidden');
       logo.onerror = function () { logo.setAttribute('hidden', ''); };
+    } else {
+      logo.setAttribute('hidden', '');
     }
-    $('supportBtn').href = supportUrl;
-    var sl = document.getElementById('supportLink');
-    if (sl) sl.href = supportUrl;
+
+    var supportBtn = $('supportBtn');
+    var supportLink = $('supportLink');
+    if (supportUrl) {
+      supportBtn.href = supportUrl;
+      supportBtn.style.display = '';
+      if (supportLink) {
+        supportLink.href = supportUrl;
+        supportLink.style.display = '';
+      }
+    } else {
+      supportBtn.style.display = 'none';
+      if (supportLink) supportLink.style.display = 'none';
+    }
   }
 
   function showMain(pool) {
@@ -457,7 +465,13 @@
     $('loading').classList.add('hide');
     $('main').classList.add('hide');
     $('fail').classList.remove('hide');
-    $('failLink').href = supportUrl;
+    var failLink = $('failLink');
+    if (supportUrl) {
+      failLink.href = supportUrl;
+      failLink.style.display = '';
+    } else {
+      failLink.style.display = 'none';
+    }
   }
 
   // ---- 拉域名 ----
@@ -472,21 +486,35 @@
           reject(new Error('timeout'));
         }, FETCH_TIMEOUT);
 
-        var url = base
-          + (base.indexOf('?') === -1 ? '?' : '&')
-          + 'from=' + encodeURIComponent(ctx.from)
-          + '&_=' + Date.now();
-
-        fetch(url, { cache: 'no-store', signal: ctrl ? ctrl.signal : undefined })
+        fetch(base, {
+          method: 'POST',
+          cache: 'no-store',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ domain: ctx.from }),
+          signal: ctrl ? ctrl.signal : undefined
+        })
           .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)); })
-          .then(function (data) {
+          .then(function (raw) {
             clearTimeout(timer);
+            // 兼容标准响应包装:{ code, message, data: {...} }
+            // 如果存在 code 且不是成功码,直接当失败
+            if (raw && typeof raw.code !== 'undefined' && raw.code !== 200 && raw.code !== 0) {
+              reject(new Error('biz code ' + raw.code));
+              return;
+            }
+            var data = (raw && raw.data && typeof raw.data === 'object') ? raw.data : raw;
+
             if (data && Array.isArray(data.domains) && data.domains.length) {
               if (data.support_url && typeof data.support_url === 'string') {
                 supportUrl = data.support_url;
               }
               if (data.logo_url && typeof data.logo_url === 'string') {
                 logoUrl = data.logo_url;
+              }
+              if (Array.isArray(data.carousel_images) && data.carousel_images.length) {
+                carouselImages = data.carousel_images.filter(function (s) {
+                  return typeof s === 'string' && s;
+                });
               }
               resolve(data.domains);
             } else {
@@ -514,12 +542,11 @@
   // ---- 主流程 ----
   (function main() {
     fetchDomainList().then(function (dynamicList) {
-      var pool = (dynamicList && dynamicList.length) ? dynamicList : FALLBACK_DOMAINS;
-      if (!pool || !pool.length) {
+      if (!dynamicList || !dynamicList.length) {
         showFail();
         return;
       }
-      showMain(pool);
+      showMain(dynamicList);
     })['catch'](showFail);
   })();
 })();
