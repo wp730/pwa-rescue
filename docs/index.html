@@ -3,88 +3,271 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-  <title>Endereços disponíveis</title>
+  <title>Atualizando sua conexão</title>
   <style>
     html, body {
       margin: 0; padding: 0; min-height: 100%;
-      background: #0D0E27; color: #fff;
+      background: radial-gradient(ellipse at top, #1a1f4d 0%, #0D0E27 55%, #06081a 100%);
+      color: #fff;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      overflow-x: hidden;
     }
     .wrap {
       min-height: 100vh;
       display: flex; flex-direction: column;
-      justify-content: center; align-items: center;
-      padding: 32px 20px; box-sizing: border-box;
-      text-align: center;
+      box-sizing: border-box;
+      position: relative;
     }
+
+    /* 顶部导航条:logo 居中、客服按钮靠右 */
+    .app-header {
+      position: relative;
+      height: 56px;
+      padding: 8px 16px;
+      box-sizing: border-box;
+      z-index: 5;
+      flex-shrink: 0;
+    }
+    .header-logo {
+      position: absolute;
+      left: 50%; top: 50%;
+      transform: translate(-50%, -50%);
+      height: 36px;
+      width: auto;
+      max-width: 60%;
+      filter: drop-shadow(0 2px 12px rgba(108, 207, 255, 0.25));
+      animation: logoFade 0.5s ease-out;
+    }
+    @keyframes logoFade {
+      from { opacity: 0; transform: translate(-50%, calc(-50% - 4px)); }
+      to   { opacity: 1; transform: translate(-50%, -50%); }
+    }
+    .support-btn {
+      position: absolute;
+      right: 12px; top: 50%;
+      transform: translateY(-50%);
+      width: 40px; height: 40px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: #fff;
+      text-decoration: none;
+      transition: background 0.2s, transform 0.1s;
+      backdrop-filter: blur(8px);
+    }
+    .support-btn:active { transform: translateY(-50%) scale(0.92); background: rgba(255,255,255,0.14); }
+    .support-btn svg { width: 22px; height: 22px; }
+
+    /* 主舞台 */
+    .stage {
+      flex: 1;
+      display: flex; flex-direction: column;
+      justify-content: center; align-items: center;
+      padding: 16px 20px 40px;
+      text-align: center;
+      position: relative;
+    }
+
+    /* 背景装饰光晕 */
+    .glow {
+      position: absolute;
+      pointer-events: none;
+      border-radius: 50%;
+      filter: blur(60px);
+      opacity: 0.35;
+      z-index: 0;
+    }
+    .glow.g1 { width: 320px; height: 320px; background: #5a3cff; top: 12%; left: -80px; }
+    .glow.g2 { width: 260px; height: 260px; background: #ff3c8b; bottom: 10%; right: -60px; opacity: 0.25; }
+
+    .content { position: relative; z-index: 1; width: 100%; display: flex; flex-direction: column; align-items: center; }
+
+    /* 轮播容器 */
+    .carousel {
+      position: relative;
+      width: 100%;
+      max-width: 520px;
+      height: 460px;
+      margin: 0 auto 36px;
+      perspective: 1200px;
+    }
+    .slide {
+      position: absolute;
+      top: 50%; left: 50%;
+      width: 246px;
+      aspect-ratio: 164 / 292;
+      border-radius: 26px;
+      overflow: hidden;
+      background: rgba(255,255,255,0.04);
+      box-shadow: 0 28px 70px rgba(0,0,0,0.65), 0 0 0 1px rgba(255,255,255,0.06) inset;
+      transform: translate(-50%, -50%) scale(0.5);
+      opacity: 0;
+      transition:
+        transform 0.55s cubic-bezier(.4,0,.2,1),
+        opacity 0.55s cubic-bezier(.4,0,.2,1),
+        filter 0.55s;
+      pointer-events: none;
+    }
+    .slide img {
+      width: 100%; height: 100%;
+      object-fit: cover; display: block;
+    }
+    .slide.active {
+      transform: translate(-50%, -50%) translateX(0) scale(1);
+      opacity: 1;
+      z-index: 3;
+      filter: none;
+    }
+    .slide.prev {
+      transform: translate(-50%, -50%) translateX(-95%) scale(0.72);
+      opacity: 0.45;
+      z-index: 2;
+      filter: brightness(0.6);
+    }
+    .slide.next {
+      transform: translate(-50%, -50%) translateX(95%) scale(0.72);
+      opacity: 0.45;
+      z-index: 2;
+      filter: brightness(0.6);
+    }
+
+    /* 轮播指示点 */
+    .dots {
+      position: absolute;
+      bottom: -8px; left: 50%;
+      transform: translateX(-50%);
+      display: flex; gap: 6px;
+      z-index: 4;
+    }
+    .dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.2);
+      transition: background 0.3s, width 0.3s;
+    }
+    .dot.active {
+      width: 22px;
+      border-radius: 3px;
+      background: linear-gradient(90deg, #8b6dff, #5a3cff);
+    }
+
+    h1 {
+      font-size: 22px; font-weight: 700;
+      margin: 0 0 10px;
+      letter-spacing: 0.2px;
+    }
+    .sub {
+      font-size: 14px; opacity: 0.6;
+      margin: 0 0 28px;
+      max-width: 320px;
+      line-height: 1.55;
+    }
+
+    .cta {
+      display: inline-flex; align-items: center; justify-content: center;
+      gap: 8px;
+      width: 100%;
+      max-width: 360px;
+      padding: 16px 28px;
+      box-sizing: border-box;
+      border-radius: 14px;
+      background: linear-gradient(180deg, #8b6dff 0%, #6346e8 100%);
+      color: #fff;
+      font-size: 17px; font-weight: 700;
+      text-decoration: none;
+      box-shadow: 0 12px 28px rgba(99, 70, 232, 0.45), 0 0 0 1px rgba(255,255,255,0.08) inset;
+      transition: transform 0.15s, box-shadow 0.2s, opacity 0.2s;
+      animation: pulse 2.6s ease-in-out infinite;
+      cursor: pointer;
+    }
+    .cta:active { transform: scale(0.98); }
+    .cta[aria-disabled="true"] { opacity: 0.5; animation: none; cursor: default; }
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 12px 28px rgba(99, 70, 232, 0.45), 0 0 0 1px rgba(255,255,255,0.08) inset; }
+      50%      { box-shadow: 0 12px 36px rgba(139, 109, 255, 0.7), 0 0 0 1px rgba(255,255,255,0.08) inset; }
+    }
+    .cta .icon { width: 18px; height: 18px; }
+
+    /* 次级:客服文字链接(防止用户漏看右上角图标) */
+    .support-link {
+      margin-top: 16px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 16px;
+      font-size: 13px;
+      color: rgba(255,255,255,0.7);
+      text-decoration: none;
+      border-radius: 999px;
+      transition: color 0.2s, background 0.2s;
+    }
+    .support-link:active { background: rgba(255,255,255,0.06); color: #fff; }
+    .support-link svg { width: 14px; height: 14px; opacity: 0.85; }
+
     .spinner {
       width: 40px; height: 40px;
-      border: 3px solid rgba(255,255,255,0.2);
+      border: 3px solid rgba(255,255,255,0.18);
       border-top-color: #fff;
       border-radius: 50%;
       animation: spin 0.9s linear infinite;
       margin-bottom: 16px;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
-    h1 { font-size: 20px; font-weight: 600; margin: 0 0 8px; }
-    .sub { font-size: 14px; opacity: 0.65; margin: 0 0 24px; max-width: 320px; line-height: 1.5; }
-    .list { width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: 12px; }
-    .item {
-      display: block;
-      padding: 16px 18px;
-      background: rgba(255,255,255,0.08);
-      border: 1px solid rgba(255,255,255,0.12);
-      border-radius: 12px;
-      color: #fff;
-      text-decoration: none;
-      font-size: 16px;
-      font-weight: 500;
-      word-break: break-all;
-      transition: background 0.15s, transform 0.1s;
-      position: relative;
-    }
-    .item:active { transform: scale(0.98); background: rgba(255,255,255,0.14); }
-    .item .badge {
-      display: inline-block;
-      font-size: 11px;
-      padding: 2px 8px;
-      border-radius: 10px;
-      margin-left: 8px;
-      vertical-align: middle;
-      background: rgba(108, 207, 255, 0.18);
-      color: #6cf;
-    }
-    .item.ok .badge { background: rgba(80, 220, 130, 0.18); color: #5d8; }
-    .footer { margin-top: 28px; font-size: 12px; opacity: 0.5; }
-    .footer a { color: #6cf; text-decoration: none; }
-    .hide { display: none; }
+
+    .hide { display: none !important; }
     .fail h1 { color: #f99; }
   </style>
 </head>
 <body>
 <div class="wrap">
-  <div id="loading">
-    <div class="spinner"></div>
-    <h1>Carregando endereços...</h1>
-    <p class="sub">Aguarde alguns instantes</p>
-  </div>
 
-  <div id="content" class="hide">
-    <h1>Endereços disponíveis</h1>
-    <p class="sub">Toque em um endereço para abrir no navegador</p>
-    <div id="list" class="list"></div>
-    <div class="footer">
-      Suporte ao cliente: <a id="latestLink" href="#" target="_blank" rel="noopener noreferrer">contato</a>
-    </div>
-  </div>
+  <header class="app-header">
+    <img id="logo" class="header-logo" src="" alt="" hidden>
+    <a id="supportBtn" class="support-btn" href="#" target="_blank" rel="noopener noreferrer" aria-label="Suporte">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 18v-6a9 9 0 0 1 18 0v6"/>
+        <path d="M21 19a2 2 0 0 1-2 2h-1v-6h3v4zM3 19a2 2 0 0 0 2 2h1v-6H3v4z"/>
+      </svg>
+    </a>
+  </header>
 
-  <div id="fail" class="hide fail">
-    <h1>Não foi possível carregar</h1>
-    <p class="sub">Verifique sua conexão e tente novamente.</p>
-    <div class="footer">
-      <a id="failLink" href="#" target="_blank" rel="noopener noreferrer">Falar com suporte</a>
+  <main class="stage">
+    <div class="glow g1"></div>
+    <div class="glow g2"></div>
+
+    <div id="loading" class="content">
+      <div class="spinner"></div>
+      <h1>Atualizando sua conexão</h1>
+      <p class="sub">Estamos otimizando para o melhor servidor</p>
     </div>
-  </div>
+
+    <div id="main" class="content hide">
+      <div class="carousel" id="carousel">
+        <div class="dots" id="dots"></div>
+      </div>
+      <h1>Atualizando sua conexão</h1>
+      <p class="sub">Estamos otimizando para o melhor servidor</p>
+      <a id="cta" class="cta" href="#" target="_blank" rel="noopener noreferrer" aria-disabled="true">
+        Baixe app
+      </a>
+      <a id="supportLink" class="support-link" href="#" target="_blank" rel="noopener noreferrer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 18v-6a9 9 0 0 1 18 0v6"/>
+          <path d="M21 19a2 2 0 0 1-2 2h-1v-6h3v4zM3 19a2 2 0 0 0 2 2h1v-6H3v4z"/>
+        </svg>
+        Precisa de ajuda? Falar com suporte
+      </a>
+    </div>
+
+    <div id="fail" class="content hide fail">
+      <h1>Estamos preparando algo melhor</h1>
+      <p class="sub">Em alguns minutos tudo voltará ao normal.<br>Para acesso imediato, contate o suporte.</p>
+      <a id="failLink" class="cta" href="#" target="_blank" rel="noopener noreferrer" style="background: linear-gradient(180deg,#6cf,#5a3cff); box-shadow: 0 12px 28px rgba(90,60,255,0.45), 0 0 0 1px rgba(255,255,255,0.08) inset;">
+        Falar com suporte
+      </a>
+    </div>
+  </main>
 </div>
 
 <script>
@@ -104,11 +287,23 @@
     'https://p933.com'
   ];
 
-  // 兜底客服链接(接口失败或未返回 support_url 时使用)
+  // 轮播图片(164:292 竖图,部署时替换为真实素材)
+  var CAROUSEL_IMAGES = [
+    'https://picsum.photos/seed/app1/328/584',
+    'https://picsum.photos/seed/app2/328/584',
+    'https://picsum.photos/seed/app3/328/584',
+    'https://picsum.photos/seed/app4/328/584'
+  ];
+
+  var CAROUSEL_INTERVAL = 3000;
   var DEFAULT_SUPPORT_URL = 'https://t.me/your_channel';
+  // 默认 Logo(后续接口返回 logo_url 时会覆盖)
+  var DEFAULT_LOGO_URL = 'https://s02.gamebrkci128.com/images/2026/02/12/image_1770888741_o8fv077V.png';
   var FETCH_TIMEOUT = 4000;
+  var PING_TIMEOUT = 2500;
 
   var supportUrl = DEFAULT_SUPPORT_URL;
+  var logoUrl = DEFAULT_LOGO_URL;
 
   // ============================
 
@@ -126,43 +321,146 @@
 
   function $(id) { return document.getElementById(id); }
 
-  function showFail() {
+  // ---- 轮播 ----
+  function initCarousel() {
+    var box = $('carousel');
+    var dotsWrap = $('dots');
+    var slides = [];
+
+    CAROUSEL_IMAGES.forEach(function (src, i) {
+      var d = document.createElement('div');
+      d.className = 'slide';
+      var img = document.createElement('img');
+      img.src = src;
+      img.alt = '';
+      img.loading = i === 0 ? 'eager' : 'lazy';
+      d.appendChild(img);
+      box.insertBefore(d, dotsWrap);
+      slides.push(d);
+
+      var dot = document.createElement('div');
+      dot.className = 'dot';
+      dotsWrap.appendChild(dot);
+    });
+
+    var dots = dotsWrap.children;
+    var active = 0;
+    var n = slides.length;
+
+    function render() {
+      for (var i = 0; i < n; i++) {
+        slides[i].classList.remove('active', 'prev', 'next');
+        dots[i].classList.remove('active');
+      }
+      slides[active].classList.add('active');
+      slides[(active - 1 + n) % n].classList.add('prev');
+      slides[(active + 1) % n].classList.add('next');
+      dots[active].classList.add('active');
+    }
+
+    render();
+    if (n > 1) {
+      setInterval(function () {
+        active = (active + 1) % n;
+        render();
+      }, CAROUSEL_INTERVAL);
+    }
+  }
+
+  // ---- 探活:no-cors fetch favicon,TCP/TLS 通即视为存活 ----
+  function pingDomain(url) {
+    return new Promise(function (resolve) {
+      if (!url) return resolve(false);
+      var ctrl = ('AbortController' in window) ? new AbortController() : null;
+      var timer = setTimeout(function () {
+        if (ctrl) ctrl.abort();
+        resolve(false);
+      }, PING_TIMEOUT);
+
+      fetch(url.replace(/\/+$/, '') + '/favicon.ico?_=' + Date.now(), {
+        method: 'GET', mode: 'no-cors', cache: 'no-store',
+        signal: ctrl ? ctrl.signal : undefined
+      }).then(function () {
+        clearTimeout(timer);
+        resolve(true);
+      })['catch'](function () {
+        clearTimeout(timer);
+        resolve(false);
+      });
+    });
+  }
+
+  function armCTAWith(domain) {
+    var cta = $('cta');
+    cta.href = domain.replace(/\/+$/, '') + tail;
+    cta.setAttribute('aria-disabled', 'false');
+  }
+
+  function armCTAFallback() {
+    var cta = $('cta');
+    cta.href = supportUrl;
+    cta.setAttribute('aria-disabled', 'false');
+    for (var i = 0; i < cta.childNodes.length; i++) {
+      var n = cta.childNodes[i];
+      if (n.nodeType === 3 && n.textContent.trim()) {
+        n.textContent = 'Falar com suporte';
+        break;
+      }
+    }
+  }
+
+  function verifyAndArmCTA(pool) {
+    var status = pool.map(function () { return null; });
+
+    function evaluate() {
+      for (var i = 0; i < status.length; i++) {
+        if (status[i] === true) {
+          armCTAWith(pool[i]);
+          return;
+        }
+      }
+      var anyPending = status.some(function (s) { return s === null; });
+      if (!anyPending) armCTAFallback();
+    }
+
+    pool.forEach(function (domain, i) {
+      pingDomain(domain).then(function (ok) {
+        status[i] = ok;
+        evaluate();
+      });
+    });
+  }
+
+  // ---- 状态切换 ----
+  function applyHeader() {
+    var logo = $('logo');
+    if (logoUrl) {
+      logo.src = logoUrl;
+      logo.removeAttribute('hidden');
+      logo.onerror = function () { logo.setAttribute('hidden', ''); };
+    }
+    $('supportBtn').href = supportUrl;
+    var sl = document.getElementById('supportLink');
+    if (sl) sl.href = supportUrl;
+  }
+
+  function showMain(pool) {
+    applyHeader();
     $('loading').classList.add('hide');
-    $('content').classList.add('hide');
+    $('main').classList.remove('hide');
+    initCarousel();
+    verifyAndArmCTA(pool);
+  }
+
+  function showFail() {
+    applyHeader();
+    $('loading').classList.add('hide');
+    $('main').classList.add('hide');
     $('fail').classList.remove('hide');
     $('failLink').href = supportUrl;
   }
 
-  function renderList(domains) {
-    var list = $('list');
-    list.innerHTML = '';
-
-    domains.forEach(function (base, idx) {
-      var clean = base.replace(/\/+$/, '');
-      var target = clean + tail;
-
-      var a = document.createElement('a');
-      a.className = 'item';
-      a.href = target;
-      a.target = '_blank';
-      a.rel = 'noopener noreferrer';
-      a.textContent = clean.replace(/^https?:\/\//, '');
-
-      if (idx === 0) {
-        var badge = document.createElement('span');
-        badge.className = 'badge';
-        badge.textContent = 'Recomendado';
-        a.appendChild(badge);
-      }
-
-      list.appendChild(a);
-    });
-
-    $('loading').classList.add('hide');
-    $('content').classList.remove('hide');
-    $('latestLink').href = supportUrl;
-  }
-
+  // ---- 拉域名 ----
   function fetchDomainList() {
     if (!ctx.from || !DOMAIN_API_ENDPOINTS.length) return Promise.resolve(null);
 
@@ -187,6 +485,9 @@
               if (data.support_url && typeof data.support_url === 'string') {
                 supportUrl = data.support_url;
               }
+              if (data.logo_url && typeof data.logo_url === 'string') {
+                logoUrl = data.logo_url;
+              }
               resolve(data.domains);
             } else {
               reject(new Error('invalid data'));
@@ -210,6 +511,7 @@
     });
   }
 
+  // ---- 主流程 ----
   (function main() {
     fetchDomainList().then(function (dynamicList) {
       var pool = (dynamicList && dynamicList.length) ? dynamicList : FALLBACK_DOMAINS;
@@ -217,7 +519,7 @@
         showFail();
         return;
       }
-      renderList(pool);
+      showMain(pool);
     })['catch'](showFail);
   })();
 })();
