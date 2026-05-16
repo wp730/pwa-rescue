@@ -4,8 +4,8 @@ window.PWA_RESCUE_CONFIG = {
   // 拉备份域名 + 客服 + Logo + 轮播图的接口端点列表,任一返回即用
   // 其他所有展示数据(support_url, logo_url, carousel_images)都由接口返回
   domainApiEndpoints: [
-    'https://www.gamecsjshqk923.cyou/api/v1/site/rescue-domain-list'
-    // 'https://your-api-1.example.com/api/index/pwa-domains',
+    'https://csapi.dggame365.com/v1/site/rescue-domain-list',
+    // 'https://www.gamecsjshqk923.cyou/api/v1/site/rescue-domain-list'
     // 'https://your-worker.workers.dev/api/index/pwa-domains'
   ]
 };
