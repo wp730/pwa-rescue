@@ -5,6 +5,7 @@ window.PWA_RESCUE_CONFIG = {
   // 其他所有展示数据(support_url, logo_url, carousel_images)都由接口返回
   domainApiEndpoints: [
     'https://csapi.dggame365.com/v1/site/rescue-domain-list',
+    'https://csapi.dggcms.com'
     // 'https://www.gamecsjshqk923.cyou/api/v1/site/rescue-domain-list'
     // 'https://your-worker.workers.dev/api/index/pwa-domains'
   ]
